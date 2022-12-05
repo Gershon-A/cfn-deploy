@@ -64,10 +64,9 @@ aws configure --profile ${AWS_PROFILE} set aws_access_key_id "${AWS_ACCESS_KEY_I
 aws configure --profile ${AWS_PROFILE} set aws_secret_access_key "${AWS_SECRET_ACCESS_KEY}"
 aws configure --profile ${AWS_PROFILE} set region "${AWS_REGION}"
 
-function example {
+function example () {
   args
-    : @required string firstName
-    : string stack-name
+    : @required string stack-name
     : string region
     : string template
     : string[] ...parameters_overrides
@@ -76,7 +75,9 @@ function example {
 
 }
 
-example
+MESSAGE="this is a test" ; simple_red_echo
+example # this calls a function
+echo $?
 
 cfn-deploy() {
     #Paramters
