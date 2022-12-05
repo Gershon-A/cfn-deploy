@@ -1,4 +1,4 @@
-FROM  amazon/aws-cli:latest
+FROM  amazon/aws-cli:2.9.4
 
 LABEL version="1.0.0"
 

@@ -41,22 +41,25 @@ simple_red_echo() {
 
 
 AWS_PROFILE="default"
-
+readonly DEFAULT_SLACK_WEBHOOK_URL=""
+readonly DEFAULT_GITHUB_JOB_LINK="https://github.com/Tricentis-Cloud-Infrastructure/ttm4j-infrastructure"
+DEPLOYMENT_STATUS="IN_PROGRESS"
 #Check AWS credetials are defined in Gitlab Secrets
 if [[ -z "$AWS_ACCESS_KEY_ID" ]]; then
-    # echo "AWS_ACCESS_KEY_ID is not SET!"
     MESSAGE="AWS_ACCESS_KEY_ID is not SET!" ; simple_red_echo
     echo
     exit 1
 fi
 
 if [[ -z "$AWS_SECRET_ACCESS_KEY" ]]; then
-    echo "AWS_SECRET_ACCESS_KEY is not SET!"
+    MESSAGE="AWS_SECRET_ACCESS_KEY is not SET!" ; simple_red_echo
+    echo
     exit 2
 fi
 
 if [[ -z "$AWS_REGION" ]]; then
-    echo "AWS_REGION is not SET!"
+    MESSAGE="AWS_REGION is not SET!" ; simple_red_echo
+    echo
     exit 3
 fi
 
@@ -64,28 +67,63 @@ aws configure --profile ${AWS_PROFILE} set aws_access_key_id "${AWS_ACCESS_KEY_I
 aws configure --profile ${AWS_PROFILE} set aws_secret_access_key "${AWS_SECRET_ACCESS_KEY}"
 aws configure --profile ${AWS_PROFILE} set region "${AWS_REGION}"
 
+function post-exit {
+  if [ $DEPLOYMENT_STATUS == "SUCCESS" ]; then
+    send-deployment-success-slack-notification "$1" "$2" "$3"
+  else
+    send-deployment-failure-slack-notification "$1" "$2" "$3"
+  fi
+}
 
-# function example { args : string stack-name , string template } {
-#   echo "My name is ${stack-name} ${template} and I am  years old."
-# }
-#
-# MESSAGE="this is a test" ; simple_red_echo
-# example # this calls a function
-# echo $?
+function send-deployment-failure-slack-notification {
+    # Parameters
+    # stack-name  - the stack name
+    # slack-webhook-url - the webhook for slack
+
+    post-slack-message "<${3}|${1}> : DEPLOYMENT FAILURE" "${2}"
+}
+
+function send-deployment-success-slack-notification {
+    # Parameters
+    # stack-name  - the stack name
+    # slack-webhook-url - the webhook for slack
+
+    post-slack-message "<${3}|${1}> : DEPLOYMENT SUCCESS" "${2}"
+}
+
+function post-slack-message {
+
+    # Parameters
+    # slack-message - the slack message to be sent
+    # slack-webhook-url - the webhook for slack
+
+    if [[ -n $2 ]] ; then
+        curl -X POST -H 'Content-type: application/json' \
+        --data '{"text":"'"$1"'"}' $2
+    fi
+}
 
 cfn-deploy() {
     #Paramters
-    # region       - the AWS region
-    # stack-name   - the stack name
-    # template     - the template file
-    # parameters   - the paramters file
-    # capabilities  - capabilities for IAM
+    # region                - the AWS region
+    # stack-name            - the stack name
+    # template              - the template file
+    # parameters            - the paramters file
+    # parameters_overrides  - Key=value parameters
+    # capabilities          - capabilities for IAM
+    # output                - the output format (yaml or json)
+    # slack-webhook-url     - the webhook for slack
+    # github-job-link       - the github job link
+    # notificationArn       - notification ARN for stack updates
 
     template=$3
     parameters=$4
     parameters_overrides="$5"
     capabilities="$6"
     output="$7"
+    notificationArn="${10}"
+
+    trap 'post-exit "$2" "$6"' EXIT
 
     ARG_CMD=" "
     if [[ -n $template ]]; then
@@ -103,6 +141,10 @@ cfn-deploy() {
     if [[ -n $output ]]; then
         ARG_CMD="${ARG_CMD}--output ${output} "
     fi
+    if [[ -n $notificationArn ]];then
+        ARG_CMD="${ARG_CMD}--notification-arns ${notificationArn[@]} "
+    fi
+
     ARG_STRING=$ARG_CMD
 
     shopt -s failglob
@@ -135,29 +177,26 @@ cfn-deploy() {
 
         echo -e "\n STACK IS AVAILABLE, TRYING TO UPDATE !!"
 
-        set +e
-        # shellcheck disable=SC2086
-        stack_output=$(
-            aws cloudformation update-stack \
-            --region "$1" \
-            --stack-name "$2" \
-            $ARG_STRING 2>&1
-        )
-        exit_status=$?
-        set -e
+    set +e
+    # shellcheck disable=SC2086
+    stack_output=$( aws cloudformation update-stack \
+        --region "$1" \
+        --stack-name "$2" \
+        $ARG_STRING  2>&1)
+    exit_status=$?
+    set -e
 
-        echo "$stack_output"
+    echo "$stack_output"
 
-        if [ $exit_status -ne 0 ]; then
+    if [ $exit_status -ne 0 ] ; then
 
-            if [[ $stack_output == *"ValidationError"* && $stack_output == *"No updates"* ]]; then
-                # echo -e "\nNO OPERATIONS PERFORMED" && exit 0
-                 MESSAGE="\nNO OPERATIONS PERFORMED" ; simple_blue_echo && exit 0
-            else
-                exit $exit_status
-            fi
-
+        if [[ $stack_output == *"ValidationError"* && $stack_output == *"No updates"* ]] ; then
+          DEPLOYMENT_STATUS="SUCCESS"
+            echo -e "\nNO OPERATIONS PERFORMED" && exit 0
+        else
+            exit $exit_status
         fi
+    fi
 
         echo "STACK UPDATE CHECK ..."
 
@@ -191,4 +230,4 @@ echo "PARAMETER_OVERRIDE=${PARAMETER_OVERRIDE:-}"
 echo "CAPABILITIES=$CAPABILITIES"
 
 
-    cfn-deploy "$AWS_REGION" "$STACK_NAME" "$TEMPLATE_FILE" "${PARAMETERS_FILE:-}" "${PARAMETER_OVERRIDE}" "$CAPABILITIES" "$OUTPUT"
+    cfn-deploy "$AWS_REGION" "$STACK_NAME" "$TEMPLATE_FILE" "${PARAMETERS_FILE:-}" "${PARAMETER_OVERRIDE}" "$CAPABILITIES" "$OUTPUT" "${SLACK_WEBHOOK_URL:-${DEFAULT_SLACK_WEBHOOK_URL}}" "${GITHUB_JOB_LINK:-${DEFAULT_GITHUB_JOB_LINK}}" "$NOTIFICATION_ARNS"
