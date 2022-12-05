@@ -67,11 +67,9 @@ aws configure --profile ${AWS_PROFILE} set region "${AWS_REGION}"
 function example () {
   args
     : @required string stack-name
-    : string region
     : string template
-    : string[] ...parameters_overrides
-  echo "My name is ${stack-name} ${region} and I am ${template} years old."
-  echo "My favorite hobbies include: ${parameters_overrides[*]}"
+  echo "My name is ${stack-name}  and I am ${template} years old."
+ #  echo "My favorite hobbies include: ${parameters_overrides[*]}"
 
 }
 
