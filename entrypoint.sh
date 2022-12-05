@@ -121,7 +121,7 @@ cfn-deploy() {
     parameters_overrides="$5"
     capabilities="$6"
     output="$7"
-    notificationArn="${10}"
+    # notificationArn="${10}"
 
     trap 'post-exit "$2" "$6"' EXIT
 
@@ -150,32 +150,30 @@ cfn-deploy() {
     shopt -s failglob
     set -eu -o pipefail
 
-    # echo -e "\nVERIFYING IF CFN STACK EXISTS ...!"
-    MESSAGE="\nVERIFYING IF CFN STACK EXISTS ...!" ; simple_blue_echo
-    echo
+    echo -e "\nVERIFYING IF CFN STACK EXISTS ...!"
 
-    if ! aws cloudformation describe-stacks --region "$1" --stack-name "$2" --output "$7"; then
+    if ! aws cloudformation describe-stacks --region "$1" --stack-name "$2" --output "$7" ; then
 
-        echo -e "\nSTACK DOES NOT EXISTS, RUNNING VALIDATE"
-        aws cloudformation validate-template \
-        --template-body file://"${template}"
+    echo -e "\nSTACK DOES NOT EXISTS, RUNNING VALIDATE"
+    aws cloudformation validate-template \
+        --template-body file://${template}
 
-        echo -e "\nSTACK DOES NOT EXISTS, RUNNING CREATE"
-        # shellcheck disable=SC2086
-        aws cloudformation create-stack \
+    echo -e "\nSTACK DOES NOT EXISTS, RUNNING CREATE"
+    # shellcheck disable=SC2086
+    aws cloudformation create-stack \
         --region "$1" \
         --stack-name "$2" \
         --on-failure "DELETE" \
         $ARG_STRING
 
-        echo "\nSLEEP STILL STACK CREATES zzz ..."
-        aws cloudformation wait stack-create-complete \
+    echo "\nSLEEP STILL STACK CREATES zzz ..."
+    aws cloudformation wait stack-create-complete \
         --region "$1" \
         --stack-name "$2" \
 
     else
 
-        echo -e "\n STACK IS AVAILABLE, TRYING TO UPDATE !!"
+    echo -e "\n STACK IS AVAILABLE, TRYING TO UPDATE !!"
 
     set +e
     # shellcheck disable=SC2086
@@ -198,29 +196,29 @@ cfn-deploy() {
         fi
     fi
 
-        echo "STACK UPDATE CHECK ..."
+    echo "STACK UPDATE CHECK ..."
 
-        aws cloudformation wait stack-update-complete \
+    aws cloudformation wait stack-update-complete \
         --region "$1" \
         --stack-name "$2" \
 
     fi
 
-    stack_output_display=$(
-        aws cloudformation \
-        --region "$1" \
-        describe-stacks --stack-name "$2" \
-        --query "Stacks[0].Outputs"
-    )
+    stack_output_display=$(aws cloudformation \
+      --region "$1" \
+      describe-stacks --stack-name "$2" \
+      --query "Stacks[0].Outputs")
 
     if [ "$stack_output_display" != "null" ]; then
-        echo "Stack output is : "
-        echo "$stack_output_display"
+      echo "Stack output is : ";
+      echo "$stack_output_display";
     else
-        echo "No stack output to display"
+      echo "No stack output to display";
     fi
 
+
     echo -e "\nSUCCESSFULLY UPDATED - $2"
+    DEPLOYMENT_STATUS="SUCCESS"
 }
 echo "AWS_REGION=$AWS_REGION"
 echo "STACK_NAME=$STACK_NAME"
