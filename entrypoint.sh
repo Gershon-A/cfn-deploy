@@ -112,7 +112,7 @@ cfn-deploy() {
     MESSAGE="\nVERIFYING IF CFN STACK EXISTS ...!" ; simple_blue_echo
     echo
 
-    if ! aws cloudformation describe-stacks --region "$1" --stack-name "$2"; then
+    if ! aws cloudformation describe-stacks --region "$1" --stack-name "$2" --output "$7"; then
 
         echo -e "\nSTACK DOES NOT EXISTS, RUNNING VALIDATE"
         aws cloudformation validate-template \
@@ -151,7 +151,8 @@ cfn-deploy() {
         if [ $exit_status -ne 0 ]; then
 
             if [[ $stack_output == *"ValidationError"* && $stack_output == *"No updates"* ]]; then
-                echo -e "\nNO OPERATIONS PERFORMED" && exit 0
+                # echo -e "\nNO OPERATIONS PERFORMED" && exit 0
+                 MESSAGE="\nNO OPERATIONS PERFORMED" ; simple_blue_echo && exit 0
             else
                 exit $exit_status
             fi
