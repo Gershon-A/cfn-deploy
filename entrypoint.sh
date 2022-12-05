@@ -183,9 +183,9 @@ echo "TEMPLATE_FILE=$TEMPLATE_FILE"
 echo "PARAMETERS_FILE=${PARAMETERS_FILE:-}"
 echo "AWS_REGION=$AWS_REGION"
 
-if [[ -n $parameters ]]; then
+if [[ -n ${PARAMETERS_FILE:-} ]]; then
     cfn-deploy "$AWS_REGION" "$STACK_NAME" "$TEMPLATE_FILE" "${PARAMETERS_FILE:-}" "$CAPABILITIES"
 fi
-if [[ -n $parameters_overrides ]]; then
+if [[ -n $PARAMETER_OVERRIDE ]]; then
     cfn-deploy "$AWS_REGION" "$STACK_NAME" "$TEMPLATE_FILE" "${PARAMETER_OVERRIDE}" "$CAPABILITIES"
 fi
