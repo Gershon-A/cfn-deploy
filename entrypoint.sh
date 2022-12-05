@@ -102,8 +102,6 @@ cfn-deploy() {
 
     ARG_STRING=$ARG_CMD
 
-    echo "ARG_STRING = $ARG_STRING"
-
     shopt -s failglob
     set -eu -o pipefail
 
@@ -179,6 +177,11 @@ cfn-deploy() {
 
     echo -e "\nSUCCESSFULLY UPDATED - $2"
 }
+echo "AWS_REGION=$AWS_REGION"
+echo "STACK_NAME=$STACK_NAME"
+echo "TEMPLATE_FILE=$TEMPLATE_FILE"
+echo "PARAMETERS_FILE=${PARAMETERS_FILE:-}"
+echo "AWS_REGION=$AWS_REGION"
 
 if [[ -n $parameters ]]; then
     cfn-deploy "$AWS_REGION" "$STACK_NAME" "$TEMPLATE_FILE" "${PARAMETERS_FILE:-}" "$CAPABILITIES"
