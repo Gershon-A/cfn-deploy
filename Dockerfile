@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM  amazon/aws-cli:2.9.4
 
 LABEL version="1.0.0"
 
@@ -11,9 +11,6 @@ LABEL com.github.actions.icon="upload-cloud"
 LABEL com.github.actions.color="orange"
 
 ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get -y update \
-&& apt-get install -y curl awscli shellcheck --no-install-recommends \
-&& rm -rf /var/lib/apt/lists/*
 
 COPY entrypoint.sh /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]

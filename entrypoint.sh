@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Exit on error. Append "|| true" if you expect an error.
-set -o errexit  # same as -e
+set -o errexit # same as -e
 # Exit on error inside any functions or subshells.
 set -o errtrace
 # Do not allow use of undefined vars. Use ${VAR:-} to use an undefined VAR
@@ -10,24 +10,58 @@ set -o nounset
 set -o pipefail
 set -x
 
+# Helper functions
+echoerr() {
+    tput bold;
+    tput setaf 1;
+    echo "$@";
+    tput sgr0; 1>&2; }
+
+# Prints success/info $MESSAGE in green foreground color
+#
+# For e.g. You can use the convention of using GREEN color for [S]uccess messages
+green_echo() {
+    echo -e "\x1b[1;32m[S] $SELF_NAME: $MESSAGE\e[0m"
+}
+
+simple_green_echo() {
+    echo -e "\x1b[1;32m$MESSAGE\e[0m"
+}
+blue_echo() {
+    echo -e "\x1b[1;34m[I] $SELF_NAME: $MESSAGE\e[0m"
+}
+
+simple_blue_echo() {
+    echo -e "\x1b[1;34m$MESSAGE\e[0m"
+}
+
+simple_red_echo() {
+    echo -e "\x1b[1;31m$MESSAGE\e[0m"
+}
+
+
 AWS_PROFILE="default"
 readonly DEFAULT_SLACK_WEBHOOK_URL=""
-readonly DEFAULT_GITHUB_JOB_LINK="https://github.com/intuit/cfn-deploy"
+readonly DEFAULT_GITHUB_JOB_LINK="https://github.com/Tricentis-Cloud-Infrastructure/ttm4j-infrastructure"
 DEPLOYMENT_STATUS="IN_PROGRESS"
-
 #Check AWS credetials are defined in Gitlab Secrets
-if [[ -z "$AWS_ACCESS_KEY_ID" ]];then
-    echo "AWS_ACCESS_KEY_ID is not SET!"; exit 1
+if [[ -z "$AWS_ACCESS_KEY_ID" ]]; then
+    MESSAGE="AWS_ACCESS_KEY_ID is not SET!" ; simple_red_echo
+    echo
+    exit 1
 fi
 
-if [[ -z "$AWS_SECRET_ACCESS_KEY" ]];then
-    echo "AWS_SECRET_ACCESS_KEY is not SET!"; exit 2
+if [[ -z "$AWS_SECRET_ACCESS_KEY" ]]; then
+    MESSAGE="AWS_SECRET_ACCESS_KEY is not SET!" ; simple_red_echo
+    echo
+    exit 2
 fi
 
-if [[ -z "$AWS_REGION" ]];then
-echo "AWS_REGION is not SET!"; exit 3
+if [[ -z "$AWS_REGION" ]]; then
+    MESSAGE="AWS_REGION is not SET!" ; simple_red_echo
+    echo
+    exit 3
 fi
-
 
 aws configure --profile ${AWS_PROFILE} set aws_access_key_id "${AWS_ACCESS_KEY_ID}"
 aws configure --profile ${AWS_PROFILE} set aws_secret_access_key "${AWS_SECRET_ACCESS_KEY}"
@@ -69,33 +103,43 @@ function post-slack-message {
     fi
 }
 
-cfn-deploy(){
-   #Paramters
-   # region             - the AWS region
-   # stack-name         - the stack name
-   # template           - the template file
-   # parameters         - the paramters file
-   # capablities        - capablities for IAM
-   # slack-webhook-url  - the webhook for slack
-   # github-job-link    - the github job link
-   # notificationArn    - notification ARN for stack updates
+cfn-deploy() {
+    #Paramters
+    # region                - the AWS region
+    # stack-name            - the stack name
+    # template              - the template file
+    # parameters            - the paramters file
+    # parameters_overrides  - Key=value parameters
+    # capabilities          - capabilities for IAM
+    # output                - the output format (yaml or json)
+    # slack-webhook-url     - the webhook for slack
+    # github-job-link       - the github job link
+    # notificationArn       - notification ARN for stack updates
 
     template=$3
     parameters=$4
-    capablities=$5
-    notificationArn=$8
+    parameters_overrides="$5"
+    capabilities="$6"
+    output="$7"
+    # notificationArn="${10}"
 
-    trap "post-exit "$2" "$6" "$7"" EXIT
+    trap 'post-exit "$2" "$6"' EXIT
 
     ARG_CMD=" "
-    if [[ -n $template ]];then
+    if [[ -n $template ]]; then
         ARG_CMD="${ARG_CMD}--template-body file://${template} "
     fi
-    if [[ -n $parameters ]];then
+    if [[ -n $parameters ]]; then
         ARG_CMD="${ARG_CMD}--parameters file://${parameters} "
     fi
-    if [[ -n $capablities ]];then
-        ARG_CMD="${ARG_CMD}--capabilities ${capablities} "
+    if [[ -n $parameters_overrides ]]; then
+        ARG_CMD="${ARG_CMD}--parameters ${parameters_overrides} "
+    fi
+    if [[ -n $capabilities ]]; then
+        ARG_CMD="${ARG_CMD}--capabilities ${capabilities} "
+    fi
+    if [[ -n $output ]]; then
+        ARG_CMD="${ARG_CMD}--output ${output} "
     fi
     if [[ -n $notificationArn ]];then
         ARG_CMD="${ARG_CMD}--notification-arns ${notificationArn[@]} "
@@ -108,7 +152,7 @@ cfn-deploy(){
 
     echo -e "\nVERIFYING IF CFN STACK EXISTS ...!"
 
-    if ! aws cloudformation describe-stacks --region "$1" --stack-name "$2" ; then
+    if ! aws cloudformation describe-stacks --region "$1" --stack-name "$2" --output "$7" ; then
 
     echo -e "\nSTACK DOES NOT EXISTS, RUNNING VALIDATE"
     aws cloudformation validate-template \
@@ -164,7 +208,7 @@ cfn-deploy(){
       --region "$1" \
       describe-stacks --stack-name "$2" \
       --query "Stacks[0].Outputs")
-      
+
     if [ "$stack_output_display" != "null" ]; then
       echo "Stack output is : ";
       echo "$stack_output_display";
@@ -176,7 +220,12 @@ cfn-deploy(){
     echo -e "\nSUCCESSFULLY UPDATED - $2"
     DEPLOYMENT_STATUS="SUCCESS"
 }
+echo "AWS_REGION=$AWS_REGION"
+echo "STACK_NAME=$STACK_NAME"
+echo "TEMPLATE_FILE=$TEMPLATE_FILE"
+echo "PARAMETERS_FILE=${PARAMETERS_FILE:-}"
+echo "PARAMETER_OVERRIDE=${PARAMETER_OVERRIDE:-}"
+echo "CAPABILITIES=$CAPABILITIES"
 
 
-cfn-deploy "$AWS_REGION" "$STACK_NAME" "$TEMPLATE_FILE" "${PARAMETERS_FILE:-}" "$CAPABLITIES" "${SLACK_WEBHOOK_URL:-${DEFAULT_SLACK_WEBHOOK_URL}}" "${GITHUB_JOB_LINK:-${DEFAULT_GITHUB_JOB_LINK}}" "$NOTIFICATION_ARNS"
-
+    cfn-deploy "$AWS_REGION" "$STACK_NAME" "$TEMPLATE_FILE" "${PARAMETERS_FILE:-}" "${PARAMETER_OVERRIDE}" "$CAPABILITIES" "$OUTPUT" "${SLACK_WEBHOOK_URL:-${DEFAULT_SLACK_WEBHOOK_URL}}" "${GITHUB_JOB_LINK:-${DEFAULT_GITHUB_JOB_LINK}}" "$NOTIFICATION_ARNS"
