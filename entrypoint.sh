@@ -85,6 +85,7 @@ cfn-deploy() {
     parameters=$4
     parameters_overrides="$5"
     capabilities="$6"
+    output="$7"
 
     ARG_CMD=" "
     if [[ -n $template ]]; then
@@ -99,13 +100,17 @@ cfn-deploy() {
     if [[ -n $capabilities ]]; then
         ARG_CMD="${ARG_CMD}--capabilities ${capabilities} "
     fi
-
+    if [[ -n $output ]]; then
+        ARG_CMD="${ARG_CMD}--output ${output} "
+    fi
     ARG_STRING=$ARG_CMD
 
     shopt -s failglob
     set -eu -o pipefail
 
-    echo -e "\nVERIFYING IF CFN STACK EXISTS ...!"
+    # echo -e "\nVERIFYING IF CFN STACK EXISTS ...!"
+    MESSAGE="\nVERIFYING IF CFN STACK EXISTS ...!" ; simple_blue_echo
+    echo
 
     if ! aws cloudformation describe-stacks --region "$1" --stack-name "$2"; then
 
@@ -185,4 +190,4 @@ echo "PARAMETER_OVERRIDE=${PARAMETER_OVERRIDE:-}"
 echo "CAPABILITIES=$CAPABILITIES"
 
 
-    cfn-deploy "$AWS_REGION" "$STACK_NAME" "$TEMPLATE_FILE" "${PARAMETERS_FILE:-}" "${PARAMETER_OVERRIDE}" "$CAPABILITIES"
+    cfn-deploy "$AWS_REGION" "$STACK_NAME" "$TEMPLATE_FILE" "${PARAMETERS_FILE:-}" "${PARAMETER_OVERRIDE}" "$CAPABILITIES" "$OUTPUT"
