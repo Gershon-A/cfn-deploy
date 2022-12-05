@@ -65,13 +65,13 @@ aws configure --profile ${AWS_PROFILE} set aws_secret_access_key "${AWS_SECRET_A
 aws configure --profile ${AWS_PROFILE} set region "${AWS_REGION}"
 
 
-function example { args : string stack-name , string template } {
-  echo "My name is ${stack-name} ${template} and I am  years old."
-}
-
-MESSAGE="this is a test" ; simple_red_echo
-example # this calls a function
-echo $?
+# function example { args : string stack-name , string template } {
+#   echo "My name is ${stack-name} ${template} and I am  years old."
+# }
+#
+# MESSAGE="this is a test" ; simple_red_echo
+# example # this calls a function
+# echo $?
 
 cfn-deploy() {
     #Paramters
@@ -79,12 +79,12 @@ cfn-deploy() {
     # stack-name   - the stack name
     # template     - the template file
     # parameters   - the paramters file
-    # capablities  - capablities for IAM
+    # capabilities  - capabilities for IAM
 
     template=$3
     parameters=$4
     parameters_overrides="$5"
-    capablities="$6"
+    capabilities="$6"
 
     ARG_CMD=" "
     if [[ -n $template ]]; then
@@ -96,11 +96,13 @@ cfn-deploy() {
     if [[ -n $parameters_overrides ]]; then
         ARG_CMD="${ARG_CMD}--parameters ${parameters_overrides} "
     fi
-    if [[ -n $capablities ]]; then
-        ARG_CMD="${ARG_CMD}--capabilities ${capablities} "
+    if [[ -n $capabilities ]]; then
+        ARG_CMD="${ARG_CMD}--capabilities ${capabilities} "
     fi
 
     ARG_STRING=$ARG_CMD
+
+    echo "ARG_STRING = $ARG_STRING"
 
     shopt -s failglob
     set -eu -o pipefail
@@ -179,8 +181,8 @@ cfn-deploy() {
 }
 
 if [[ -n $parameters ]]; then
-    cfn-deploy "$AWS_REGION" "$STACK_NAME" "$TEMPLATE_FILE" "${PARAMETERS_FILE:-}" "$CAPABLITIES"
+    cfn-deploy "$AWS_REGION" "$STACK_NAME" "$TEMPLATE_FILE" "${PARAMETERS_FILE:-}" "$CAPABILITIES"
 fi
 if [[ -n $parameters_overrides ]]; then
-    cfn-deploy "$AWS_REGION" "$STACK_NAME" "$TEMPLATE_FILE" "${PARAMETER_OVERRIDE}" "$CAPABLITIES"
+    cfn-deploy "$AWS_REGION" "$STACK_NAME" "$TEMPLATE_FILE" "${PARAMETER_OVERRIDE}" "$CAPABILITIES"
 fi
