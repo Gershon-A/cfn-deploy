@@ -10,11 +10,43 @@ set -o nounset
 set -o pipefail
 set -x
 
+# Helper functions
+echoerr() {
+    tput bold;
+    tput setaf 1;
+    echo "$@";
+    tput sgr0; 1>&2; }
+
+# Prints success/info $MESSAGE in green foreground color
+#
+# For e.g. You can use the convention of using GREEN color for [S]uccess messages
+green_echo() {
+    echo -e "\x1b[1;32m[S] $SELF_NAME: $MESSAGE\e[0m"
+}
+
+simple_green_echo() {
+    echo -e "\x1b[1;32m$MESSAGE\e[0m"
+}
+blue_echo() {
+    echo -e "\x1b[1;34m[I] $SELF_NAME: $MESSAGE\e[0m"
+}
+
+simple_blue_echo() {
+    echo -e "\x1b[1;34m$MESSAGE\e[0m"
+}
+
+simple_red_echo() {
+    echo -e "\x1b[1;31m$MESSAGE\e[0m"
+}
+
+
 AWS_PROFILE="default"
 
 #Check AWS credetials are defined in Gitlab Secrets
 if [[ -z "$AWS_ACCESS_KEY_ID" ]]; then
-    echo "AWS_ACCESS_KEY_ID is not SET!"
+    # echo "AWS_ACCESS_KEY_ID is not SET!"
+    MESSAGE="AWS_ACCESS_KEY_ID is not SET!" ; simple_red_echo
+    echo
     exit 1
 fi
 
@@ -32,6 +64,20 @@ aws configure --profile ${AWS_PROFILE} set aws_access_key_id "${AWS_ACCESS_KEY_I
 aws configure --profile ${AWS_PROFILE} set aws_secret_access_key "${AWS_SECRET_ACCESS_KEY}"
 aws configure --profile ${AWS_PROFILE} set region "${AWS_REGION}"
 
+function example {
+  args
+    : @required string firstName
+    : string stack-name
+    : string region
+    : string template
+    : string[] ...parameters_overrides
+  echo "My name is ${stack-name} ${region} and I am ${template} years old."
+  echo "My favorite hobbies include: ${parameters_overrides[*]}"
+
+}
+
+example
+
 cfn-deploy() {
     #Paramters
     # region       - the AWS region
@@ -43,7 +89,7 @@ cfn-deploy() {
     template=$3
     parameters=$4
     parameters_overrides="$5"
-    capablities=$6
+    capablities="$6"
 
     ARG_CMD=" "
     if [[ -n $template ]]; then
